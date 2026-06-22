@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Frontend Expense Tracker</title>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="card">
+        <h2>Expense Tracker</h2>
+
+        <div class="calender">
+            <label style="font-weight: bold;">Select Month:</label>
+            <input type="month" id="monthSelector">
+        </div>
+
+        <form id="expenseForm">
+            <input type="number" id="amountInput" step="0.01" placeholder="Enter Amount (₹)" required>
+            <button type="submit">Add Expense</button>
+        </form>
+
+        <div class="total-box">
+            <h3>Total: <span style="color: #059669;">₹<span id="totalDisplay">0.00</span></span></h3>
+        </div>
+
+        <h4 style="text-align: left; border-bottom: 2px solid #f4f7f6; padding-bottom: 5px;">History</h4>
+        <div id="expenseList">
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
