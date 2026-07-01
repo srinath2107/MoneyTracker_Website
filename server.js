@@ -262,7 +262,7 @@ app.get('/register', (req, res) => {
 
 // Serve the dashboard explicitly at /dashboard only
 app.get('/dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
 // This file is no longer used for routing but remains for backup if needed.

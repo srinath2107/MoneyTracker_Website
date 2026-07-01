@@ -84,6 +84,8 @@ function navigateTo(path) {
 
 function router() {
     const el = getElements();
+    if (!el.loginSection || !el.dashboardSection) return;
+
     const path = window.location.pathname.replace(/\/+$/, '') || '/';
     const isLoginPage = path === '/login' || path === '/login.html' || path === '/';
     const isRegisterPage = path === '/register' || path === '/register.html';
@@ -214,19 +216,51 @@ function showDashboard() {
 }
 
 function logout() {
-    const el = getElements();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     currentUser = null;
     expenses = [];
-    // Navigate to login route which will reset forms
-    document.getElementById('loginUsername').value = '';
-    document.getElementById('loginPassword').value = '';
-    document.getElementById('regUsername').value = '';
-    document.getElementById('regPassword').value = '';
-    document.getElementById('regConfirmPassword').value = '';
-    el.authMessage.style.display = 'none';
-    navigateTo('login');
+
+    const loginUsername = document.getElementById('loginUsername');
+    const loginPassword = document.getElementById('loginPassword');
+    const regUsername = document.getElementById('regUsername');
+    const regPassword = document.getElementById('regPassword');
+    const regConfirmPassword = document.getElementById('regConfirmPassword');
+    const authMessage = document.getElementById('authMessage');
+
+    if (loginUsername) loginUsername.value = '';
+    if (loginPassword) loginPassword.value = '';
+    if (regUsername) regUsername.value = '';
+    if (regPassword) regPassword.value = '';
+    if (regConfirmPassword) regConfirmPassword.value = '';
+    if (authMessage) authMessage.style.display = 'none';
+
+    if (document.getElementById('loginForm')) {
+        navigateTo('login');
+    } else {
+        window.location.href = './login';
+    }
+}
+
+function initDashboardPage() {
+    const el = getElements();
+
+    if (!localStorage.getItem('token')) {
+        window.location.replace('./login');
+        return;
+    }
+
+    const stored = localStorage.getItem('user');
+    if (stored) currentUser = JSON.parse(stored);
+
+    el.usernameDisplay.textContent = 'Welcome, ' + (currentUser?.username || '');
+
+    const today = new Date();
+    const currentMonthString = today.toISOString().slice(0, 7);
+    if (!el.monthSelector.value) el.monthSelector.value = currentMonthString;
+    currentCalendarMonth = new Date(el.monthSelector.value + '-01');
+    generateCalendar();
+    fetchExpenses();
 }
 
 // ========== EXPENSE FUNCTIONS ==========
@@ -425,31 +459,66 @@ function showDayExpenses(dateStr) {
 
 document.addEventListener('DOMContentLoaded', function() {
     const el = getElements();
-    
-    el.loginForm.addEventListener('submit', handleLogin);
-    el.registerForm.addEventListener('submit', handleRegister);
+    const isDashboardPage = el.dashboardSection && !el.loginForm;
 
-    el.expenseForm.addEventListener('submit', function(event) {
-        event.preventDefault();
-        const amount = el.amountInput.value;
-        const type = el.typeInput.value.trim();
-        const today = new Date().toISOString().split('T')[0];
-        addExpense(amount, type, today);
-    });
+    if (isDashboardPage) {
+        initDashboardPage();
 
-    el.monthSelector.addEventListener('change', updateScreen);
+        el.expenseForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const amount = el.amountInput.value;
+            const type = el.typeInput.value.trim();
+            const today = new Date().toISOString().split('T')[0];
+            addExpense(amount, type, today);
+        });
 
-    // Toggle between login and register forms
+        el.monthSelector.addEventListener('change', updateScreen);
+
+        const prevMonthBtn = document.getElementById('prevMonth');
+        const nextMonthBtn = document.getElementById('nextMonth');
+
+        if (prevMonthBtn) {
+            prevMonthBtn.addEventListener('click', function() {
+                currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() - 1);
+                generateCalendar();
+            });
+        }
+
+        if (nextMonthBtn) {
+            nextMonthBtn.addEventListener('click', function() {
+                currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() + 1);
+                generateCalendar();
+            });
+        }
+
+        return;
+    }
+
+    if (el.loginForm) el.loginForm.addEventListener('submit', handleLogin);
+    if (el.registerForm) el.registerForm.addEventListener('submit', handleRegister);
+
+    if (el.expenseForm) {
+        el.expenseForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const amount = el.amountInput.value;
+            const type = el.typeInput.value.trim();
+            const today = new Date().toISOString().split('T')[0];
+            addExpense(amount, type, today);
+        });
+    }
+
+    if (el.monthSelector) el.monthSelector.addEventListener('change', updateScreen);
+
     const toggleToRegister = document.getElementById('toggleToRegister');
     const toggleToLogin = document.getElementById('toggleToLogin');
-    
+
     if (toggleToRegister) {
         toggleToRegister.addEventListener('click', function(e) {
             e.preventDefault();
             navigateTo('register');
         });
     }
-    
+
     if (toggleToLogin) {
         toggleToLogin.addEventListener('click', function(e) {
             e.preventDefault();
@@ -457,17 +526,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Calendar navigation
     const prevMonthBtn = document.getElementById('prevMonth');
     const nextMonthBtn = document.getElementById('nextMonth');
-    
+
     if (prevMonthBtn) {
         prevMonthBtn.addEventListener('click', function() {
             currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() - 1);
             generateCalendar();
         });
     }
-    
+
     if (nextMonthBtn) {
         nextMonthBtn.addEventListener('click', function() {
             currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() + 1);
@@ -475,10 +543,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Handle browser navigation
     window.addEventListener('popstate', router);
 
-    // Initialize router to show correct view based on URL
     const token = localStorage.getItem('token');
     const user = localStorage.getItem('user');
     if (token && user) currentUser = JSON.parse(user);

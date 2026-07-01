@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Money Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    <script>
+        if (window.location.pathname.endsWith('/dashboard.html')) {
+            window.location.replace('./dashboard');
+        }
+        if (!localStorage.getItem('token')) {
+            window.location.replace('./login');
+        }
+    </script>
+</head>
+<body class="dashboard-page">
+    <div id="dashboardSection">
+        <nav class="navbar">
+            <div class="nav-container">
+                <h2>💰 Expense Tracker</h2>
+                <div class="nav-right">
+                    <span id="usernameDisplay"></span>
+                    <button onclick="logout()" class="logout-btn">Logout</button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="dashboard-container">
+            <div class="card">
+                <div class="calender">
+                    <input type="month" id="monthSelector">
+                    <label id="selectedMonthLabel" style="font-weight: bold; margin-top: 10px; display: block;">Select Month:</label>
+                </div>
+
+                <form id="expenseForm">
+                    <input type="number" id="amountInput" step="0.01" placeholder="Enter Amount (₹)" required>
+                    <input type="text" id="typeInput" placeholder="Enter Amount Type" required>
+                    <button type="submit">Add Expense</button>
+                </form>
+
+                <div class="total-box">
+                    <h3>Total: <span style="color: #059669;">₹<span id="totalDisplay">0.00</span></span></h3>
+                </div>
+
+                <h4 style="text-align: left; border-bottom: 2px solid #f4f7f6; padding-bottom: 5px;">History</h4>
+                <div id="expenseList"></div>
+            </div>
+
+            <div class="calendar-card">
+                <h3>📅 Calendar</h3>
+                <div class="calendar-header">
+                    <button id="prevMonth" class="calendar-nav-btn">← Prev</button>
+                    <h4 id="calendarMonth"></h4>
+                    <button id="nextMonth" class="calendar-nav-btn">Next →</button>
+                </div>
+                <div class="calendar-weekdays">
+                    <div>Sun</div>
+                    <div>Mon</div>
+                    <div>Tue</div>
+                    <div>Wed</div>
+                    <div>Thu</div>
+                    <div>Fri</div>
+                    <div>Sat</div>
+                </div>
+                <div id="calendarDays" class="calendar-days"></div>
+                <div id="dayDetails" class="day-details">
+                    <h4 id="selectedDateHeader">Select a date</h4>
+                    <div id="selectedDateExpenses" class="selected-expenses">Click any day to view expenses.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

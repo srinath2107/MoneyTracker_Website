@@ -169,6 +169,12 @@ body {
 
 /* ========== DASHBOARD STYLES ========== */
 
+body.dashboard-page {
+    display: block;
+    background-color: #f8fafc;
+    background-image: none;
+}
+
 #dashboardSection {
     width: 100%;
     background-color: #f8fafc;

@@ -2,12 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="refresh" content="0; url=./login" />
   <title>Redirecting...</title>
 </head>
 <body>
   <script>
-    window.location.replace('./login');
+    (function () {
+      var segment = location.pathname.split('/').filter(Boolean).pop() || '';
+      var routes = {
+        login: 'login.html',
+        register: 'register.html',
+        dashboard: 'dashboard.html'
+      };
+
+      if (routes[segment]) {
+        location.replace('./' + routes[segment]);
+        return;
+      }
+
+      location.replace('./login');
+    })();
   </script>
 </body>
 </html>
