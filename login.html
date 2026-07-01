@@ -16,8 +16,8 @@
             <h1>💰 Expense Tracker</h1>
             <form id="loginForm" class="auth-form active-form">
                 <h2>Login</h2>
-                <input type="text" id="loginUsername" placeholder="Username" required>
-                <input type="password" id="loginPassword" placeholder="Password" required>
+                <input type="text" id="username" placeholder="Username" required>
+                <input type="password" id="password" placeholder="Password" required>
                 <button type="submit" class="auth-btn">Login</button>
                 <p style="margin-top: 15px; text-align: center;">
                     Don't have an account? 
@@ -27,8 +27,46 @@
             <div id="authMessage" style="display:none; margin-top:15px; padding:10px; border-radius:6px; text-align:center;"></div>
         </div>
     </div>
+    <script>
+    // 1. Listen for the login form submission
+    document.querySelector('form').addEventListener('submit', async (e) => {
+        e.preventDefault(); // Stop the page from refreshing
 
-    <script src="config.js"></script>
-    <script src="auth.js"></script>
+        // 2. Grab the typed username and password
+        // (Make sure your HTML inputs actually have id="username" and id="password")
+        const usernameInput = document.getElementById('username').value;
+        const passwordInput = document.getElementById('password').value;
+
+        try {
+            // 3. Send the data to your Node server's API
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: usernameInput,
+                    password: passwordInput
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // 4. Success! Save the security token to the browser
+                localStorage.setItem('token', data.token);
+                
+                // 5. Redirect to the dashboard
+                window.location.href = '/dashboard';
+            } else {
+                // Login failed (wrong password or user doesn't exist)
+                alert('Login failed: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Something went wrong connecting to the server.');
+        }
+    });
+</script>
 </body>
 </html>

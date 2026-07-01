@@ -29,7 +29,46 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="auth.js"></script>
+<script>
+    document.querySelector('form').addEventListener('submit', async (e) => {
+        e.preventDefault(); 
+
+        // Grab the exact IDs from your HTML
+        const usernameInput = document.getElementById('regUsername').value;
+        const passwordInput = document.getElementById('regPassword').value;
+        const confirmPasswordInput = document.getElementById('regConfirmPassword').value;
+
+        // Make sure passwords match before sending to server
+        if (passwordInput !== confirmPasswordInput) {
+            alert("Passwords do not match!");
+            return; 
+        }
+
+        try {
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: usernameInput,
+                    password: passwordInput
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert('Account created successfully! Routing you to login...');
+                window.location.href = '/login'; 
+            } else {
+                alert('Registration failed: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Something went wrong connecting to the server.');
+        }
+    });
+</script>
 </body>
 </html>

@@ -98,63 +98,70 @@ function router() {
     }
 }
 
-async function handleLogin(e) {
+function handleLogin(e) {
     e.preventDefault();
-    const username = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value;
 
-    if (!username || !password) {
-        showAuthMessage('Please enter both username and password.', 'error');
+    const username = document.getElementById("loginUsername").value.trim();
+    const password = document.getElementById("loginPassword").value;
+
+    const users = JSON.parse(localStorage.getItem("users")) || {};
+
+    if (!users[username]) {
+        showAuthMessage("User not found. Please register first.", "error");
         return;
     }
 
-    try {
-        const data = await apiRequest('/api/auth/login', {
-            method: 'POST',
-            body: JSON.stringify({ username, password })
-        });
-
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        currentUser = data.user;
-        navigateTo('dashboard');
-    } catch (error) {
-        showAuthMessage(error.message || 'Unable to log in right now.', 'error');
+    if (users[username].password !== password) {
+        showAuthMessage("Invalid password.", "error");
+        return;
     }
+
+    currentUser = {
+        username: username
+    };
+
+    localStorage.setItem("user", JSON.stringify(currentUser));
+    localStorage.setItem("token", "logged_in");
+
+    window.location.href = "dashboard.html";
 }
 
-async function handleRegister(e) {
+function handleRegister(e) {
     e.preventDefault();
-    const username = document.getElementById('regUsername').value.trim();
-    const password = document.getElementById('regPassword').value;
-    const confirmPassword = document.getElementById('regConfirmPassword').value;
+
+    const username = document.getElementById("regUsername").value.trim();
+    const password = document.getElementById("regPassword").value;
+    const confirmPassword = document.getElementById("regConfirmPassword").value;
 
     if (!username || !password || !confirmPassword) {
-        showAuthMessage('Please fill in all fields.', 'error');
-        return;
-    }
-
-    if (password.length < 6) {
-        showAuthMessage('Password must be at least 6 characters.', 'error');
+        showAuthMessage("Please fill in all fields.", "error");
         return;
     }
 
     if (password !== confirmPassword) {
-        showAuthMessage('Passwords do not match.', 'error');
+        showAuthMessage("Passwords do not match.", "error");
         return;
     }
 
-    try {
-        await apiRequest('/api/auth/register', {
-            method: 'POST',
-            body: JSON.stringify({ username, password, confirmPassword })
-        });
+    let users = JSON.parse(localStorage.getItem("users")) || {};
 
-        showAuthMessage('Registration successful! Please login.', 'success');
-        setTimeout(() => toggleForms(), 1500);
-    } catch (error) {
-        showAuthMessage(error.message || 'Unable to register right now.', 'error');
+    if (users[username]) {
+        showAuthMessage("Username already exists.", "error");
+        return;
     }
+
+    users[username] = {
+        password: password,
+        expenses: []
+    };
+
+    localStorage.setItem("users", JSON.stringify(users));
+
+    showAuthMessage("Registration successful!", "success");
+
+    setTimeout(() => {
+        window.location.href = "login.html";
+    }, 1000);
 }
 
 function showAuthMessage(message, type) {
@@ -171,32 +178,15 @@ function showDashboard() {
 }
 
 function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
     currentUser = null;
     expenses = [];
 
-    const loginUsername = document.getElementById('loginUsername');
-    const loginPassword = document.getElementById('loginPassword');
-    const regUsername = document.getElementById('regUsername');
-    const regPassword = document.getElementById('regPassword');
-    const regConfirmPassword = document.getElementById('regConfirmPassword');
-    const authMessage = document.getElementById('authMessage');
-
-    if (loginUsername) loginUsername.value = '';
-    if (loginPassword) loginPassword.value = '';
-    if (regUsername) regUsername.value = '';
-    if (regPassword) regPassword.value = '';
-    if (regConfirmPassword) regConfirmPassword.value = '';
-    if (authMessage) authMessage.style.display = 'none';
-
-    if (document.getElementById('loginForm')) {
-        navigateTo('login');
-    } else {
-        window.location.href = './login';
-    }
+    window.location.href = "login.html";
 }
-
 function initDashboardPage() {
     const el = getElements();
 
@@ -220,76 +210,78 @@ function initDashboardPage() {
 
 // ========== EXPENSE FUNCTIONS ==========
 
-async function fetchExpenses() {
-    if (!localStorage.getItem('token')) {
+function fetchExpenses() {
+
+    if (!currentUser) return;
+
+    const users = JSON.parse(localStorage.getItem("users")) || {};
+
+    if (!users[currentUser.username]) {
         expenses = [];
-        updateScreen();
+    } else {
+        expenses = users[currentUser.username].expenses || [];
+    }
+
+    renderExpenses();
+    updateSummary();
+}
+
+function addExpense(e) {
+
+    e.preventDefault();
+
+    const amount = parseFloat(document.getElementById("amount").value);
+    const category = document.getElementById("category").value;
+    const description = document.getElementById("description").value;
+    const date = document.getElementById("date").value;
+
+    if (!amount || !category || !date) {
+        alert("Please fill all required fields.");
         return;
     }
 
-    try {
-        const data = await apiRequest('/api/expenses', {
-            headers: authHeaders()
-        });
-        expenses = data.expenses || [];
-        updateScreen();
-    } catch (error) {
-        handleAuthFailure(error);
-        if (error.status !== 401 && error.status !== 403) {
-            console.error('Failed to load expenses:', error.message);
-        }
+    const expense = {
+        id: Date.now(),
+        amount,
+        category,
+        description,
+        date
+    };
+
+    const users = JSON.parse(localStorage.getItem("users")) || {};
+
+    if (!users[currentUser.username].expenses) {
+        users[currentUser.username].expenses = [];
     }
+
+    users[currentUser.username].expenses.push(expense);
+
+    localStorage.setItem("users", JSON.stringify(users));
+
+    expenses = users[currentUser.username].expenses;
+
+    renderExpenses();
+    updateSummary();
+
+    document.getElementById("expenseForm").reset();
 }
 
-async function addExpense(amount, type, date) {
-    const el = getElements();
+function deleteItem(id) {
 
-    if (!localStorage.getItem('token')) {
-        alert('Please log in first.');
-        return;
-    }
+    const users = JSON.parse(localStorage.getItem("users")) || {};
 
-    const parsedAmount = parseFloat(amount);
-    if (Number.isNaN(parsedAmount)) {
-        alert('Please enter a valid amount.');
-        return;
-    }
+    users[currentUser.username].expenses =
+        users[currentUser.username].expenses.filter(
+            expense => expense.id !== id
+        );
 
-    try {
-        await apiRequest('/api/expenses', {
-            method: 'POST',
-            headers: authHeaders(),
-            body: JSON.stringify({
-                amount: parsedAmount,
-                expense_type: type,
-                date
-            })
-        });
+    localStorage.setItem("users", JSON.stringify(users));
 
-        await fetchExpenses();
-        el.amountInput.value = '';
-        el.typeInput.value = '';
-    } catch (error) {
-        handleAuthFailure(error);
-        alert(error.message || 'Unable to add expense.');
-    }
+    expenses = users[currentUser.username].expenses;
+
+    renderExpenses();
+    updateSummary();
 }
-
-async function deleteItem(id) {
-    if (!localStorage.getItem('token')) return;
-
-    try {
-        await apiRequest(`/api/expenses/${id}`, {
-            method: 'DELETE',
-            headers: authHeaders()
-        });
-        await fetchExpenses();
-    } catch (error) {
-        handleAuthFailure(error);
-        alert(error.message || 'Unable to delete expense.');
-    }
-}
-
 function updateScreen() {
     const el = getElements();
     const selectedMonth = el.monthSelector.value;

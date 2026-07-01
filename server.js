@@ -1,280 +1,143 @@
+require('dotenv').config(); // Loads variables from your .env file
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
-const bcryptjs = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const cors = require('cors');
 const path = require('path');
-require('dotenv').config();
 
 const app = express();
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+// ==========================================
+// MIDDLEWARE
+// ==========================================
+app.use(express.json()); // Allows the server to accept JSON data
+app.use(express.urlencoded({ extended: true }));
 
-// SQLite Database Setup
-const db = new sqlite3.Database(process.env.DB_PATH || './money_tracker.db', (err) => {
+// Serve your static frontend files (HTML, CSS, JS) from the root directory
+app.use(express.static(__dirname)); 
+
+// ==========================================
+// DATABASE CONNECTION
+// ==========================================
+// Connects to your existing SQLite database
+const db = new sqlite3.Database('./money_tracker.db', (err) => {
     if (err) {
-        console.error('Error opening database:', err);
+        console.error('Error connecting to the database:', err.message);
     } else {
-        console.log('Connected to SQLite database');
-        initializeDatabase();
+        console.log('Connected to the SQLite database.');
+        
+        // Optional: Ensure tables exist if you haven't created them yet
+        db.run(`CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password TEXT
+        )`);
+
+        db.run(`CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            text TEXT,
+            amount REAL,
+            type TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )`);
     }
 });
 
-// Initialize Database Tables
-function initializeDatabase() {
-    db.serialize(() => {
-        // Create Users Table
-        db.run(`
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
+// ==========================================
+// AUTHENTICATION ROUTES
+// ==========================================
 
-        // Create Expenses Table
-        db.run(`
-            CREATE TABLE IF NOT EXISTS expenses (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                amount REAL NOT NULL,
-                expense_type TEXT NOT NULL DEFAULT '',
-                date TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `, () => {
-            db.all("PRAGMA table_info(expenses)", [], (err, rows) => {
-                if (!err && rows && !rows.some(col => col.name === 'expense_type')) {
-                    db.run(`ALTER TABLE expenses ADD COLUMN expense_type TEXT NOT NULL DEFAULT ''`);
-                }
-            });
+// Register a new user
+app.post('/api/register', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword], function(err) {
+            if (err) return res.status(400).json({ error: 'Username already exists' });
+            res.status(201).json({ message: 'User registered successfully!' });
         });
-    });
-}
-
-// Helper function to run queries with promises
-const runQuery = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.run(sql, params, function(err) {
-            if (err) reject(err);
-            else resolve({ id: this.lastID, changes: this.changes });
-        });
-    });
-};
-
-const getQuery = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.get(sql, params, (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
-        });
-    });
-};
-
-const allQuery = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
-};
-
-// Middleware to verify JWT token
-const verifyToken = (req, res, next) => {
-    const token = req.headers['authorization']?.split(' ')[1];
-    
-    if (!token) {
-        return res.status(403).json({ message: 'No token provided' });
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
     }
+});
 
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
-        if (err) {
-            return res.status(401).json({ message: 'Invalid token' });
-        }
-        req.userId = decoded.id;
-        req.username = decoded.username;
+// Login user
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
+        if (err || !user) return res.status(400).json({ error: 'User not found' });
+
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) return res.status(400).json({ error: 'Invalid password' });
+
+        // Create a token to keep the user logged in
+        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'fallback_secret_key', { expiresIn: '1h' });
+        res.json({ message: 'Logged in successfully', token });
+    });
+});
+
+// Middleware to verify if a user is logged in before they can add/view money
+const verifyToken = (req, res, next) => {
+    const token = req.headers['authorization'];
+    if (!token) return res.status(403).json({ error: 'No token provided' });
+
+    jwt.verify(token.split(' ')[1], process.env.JWT_SECRET || 'fallback_secret_key', (err, decoded) => {
+        if (err) return res.status(401).json({ error: 'Unauthorized' });
+        req.userId = decoded.id; // Attach the user ID to the request
         next();
     });
 };
 
-// ========== AUTHENTICATION ROUTES ==========
+// ==========================================
+// TRANSACTION ROUTES (Protected)
+// ==========================================
 
-// Register Route
-app.post('/api/auth/register', async (req, res) => {
-    const { username, password, confirmPassword } = req.body;
-
-    if (!username || !password || !confirmPassword) {
-        return res.status(400).json({ message: 'All fields are required' });
-    }
-
-    if (password !== confirmPassword) {
-        return res.status(400).json({ message: 'Passwords do not match' });
-    }
-
-    if (password.length < 6) {
-        return res.status(400).json({ message: 'Password must be at least 6 characters' });
-    }
-
-    try {
-        // Check if user already exists
-        const existingUser = await getQuery('SELECT username FROM users WHERE LOWER(username) = LOWER(?)', [username]);
-        
-        if (existingUser) {
-            return res.status(400).json({ message: 'Username already exists' });
-        }
-
-        // Hash password
-        const hashedPassword = await bcryptjs.hash(password, 8);
-
-        // Insert user into database
-        await runQuery('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword]);
-
-        return res.status(201).json({ message: 'User registered successfully' });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Server error', error: error.message });
-    }
-});
-
-// Login Route
-app.post('/api/auth/login', async (req, res) => {
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-        return res.status(400).json({ message: 'Username and password are required' });
-    }
-
-    try {
-        const user = await getQuery('SELECT id, username, password FROM users WHERE LOWER(username) = LOWER(?)', [username]);
-
-        if (!user) {
-            return res.status(401).json({ message: 'Invalid username or password' });
-        }
-
-        const isPasswordValid = await bcryptjs.compare(password, user.password);
-
-        if (!isPasswordValid) {
-            return res.status(401).json({ message: 'Invalid username or password' });
-        }
-
-        // Generate JWT token
-        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, {
-            expiresIn: '7d'
-        });
-
-        return res.status(200).json({
-            message: 'Login successful',
-            token,
-            user: { id: user.id, username: user.username }
-        });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Server error', error: error.message });
-    }
-});
-
-// ========== EXPENSE ROUTES ==========
-
-// Add Expense
-app.post('/api/expenses', verifyToken, async (req, res) => {
-    const { amount, date, expense_type } = req.body;
-    const userId = req.userId;
-
-    if (!amount || !date || !expense_type) {
-        return res.status(400).json({ message: 'Amount, type, and date are required' });
-    }
-
-    try {
-        await runQuery('INSERT INTO expenses (user_id, amount, expense_type, date) VALUES (?, ?, ?, ?)', 
-            [userId, amount, expense_type, date]);
-
-        return res.status(201).json({ message: 'Expense added successfully' });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Server error', error: error.message });
-    }
-});
-
-// Get Expenses
-app.get('/api/expenses', verifyToken, async (req, res) => {
-    const userId = req.userId;
-
-    try {
-        const expenses = await allQuery(
-            'SELECT id, amount, expense_type, date FROM expenses WHERE user_id = ? ORDER BY date DESC',
-            [userId]
-        );
-
-        return res.status(200).json({ expenses });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Server error', error: error.message });
-    }
-});
-
-// Delete Expense
-app.delete('/api/expenses/:id', verifyToken, async (req, res) => {
-    const { id } = req.params;
-    const userId = req.userId;
-
-    try {
-        const result = await runQuery(
-            'DELETE FROM expenses WHERE id = ? AND user_id = ?',
-            [id, userId]
-        );
-
-        if (result.changes === 0) {
-            return res.status(404).json({ message: 'Expense not found' });
-        }
-
-        return res.status(200).json({ message: 'Expense deleted successfully' });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Server error', error: error.message });
-    }
-});
-
-// Health check route for deployment platforms
-app.get('/api/health', (req, res) => {
-    res.status(200).json({ status: 'ok' });
-});
-
-// Serve index.html for any non-API route (SPA routing support)
-// Redirect root to login page and serve auth pages individually
+// Get all transactions for the logged-in user
+// Serve the main index/redirect on the root route
 app.get('/', (req, res) => {
-    return res.redirect('/login');
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Serve the login page for clean URLs
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
 });
 
+// Serve the registration page
 app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'register.html'));
 });
 
-// Serve the dashboard explicitly at /dashboard only
+// Serve the dashboard
 app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
-// This file is no longer used for routing but remains for backup if needed.
-
-
-// Any other non-API route -> redirect to login
-app.get('*', (req, res) => {
-    return res.redirect('/login');
+// Add a new transaction
+app.post('/api/transactions', verifyToken, (req, res) => {
+    const { text, amount, type } = req.body;
+    db.run('INSERT INTO transactions (user_id, text, amount, type) VALUES (?, ?, ?, ?)', 
+        [req.userId, text, amount, type], 
+        function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.status(201).json({ id: this.lastID, text, amount, type });
+    });
 });
 
-// Start Server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server is running on http://0.0.0.0:${PORT}`);
+// Delete a transaction
+app.delete('/api/transactions/:id', verifyToken, (req, res) => {
+    const transactionId = req.params.id;
+    db.run('DELETE FROM transactions WHERE id = ? AND user_id = ?', [transactionId, req.userId], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Transaction deleted' });
+    });
+});
+
+// ==========================================
+// START SERVER
+// ==========================================
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
 });
