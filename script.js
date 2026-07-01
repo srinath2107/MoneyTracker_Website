@@ -1,5 +1,18 @@
 // API Base URL
-const API_URL = 'http://localhost:5000/api';
+const API_URL = (() => {
+    if (typeof window === 'undefined') return '/api';
+
+    const origin = window.location.origin;
+    if (!origin || origin === 'null') {
+        return 'http://localhost:5000/api';
+    }
+
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return 'http://localhost:5000/api';
+    }
+
+    return `${origin}/api`;
+})();
 
 let expenses = [];
 let currentUser = null;

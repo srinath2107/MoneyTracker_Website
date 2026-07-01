@@ -15,7 +15,7 @@ A secure expense tracking web application with user authentication and SQLite da
 ## ⚡ Step 1: Install Dependencies
 
 ```bash
-cd c:\Users\srina\Downloads\MoneyTracker
+cd c:\Users\srina\Downloads\Money Tracker V1\MoneyTracker_Website
 npm install
 ```
 
@@ -153,13 +153,15 @@ No additional setup needed!
 
 ---
 
-## 🚀 Deployment (Future)
+## 🚀 Deployment
 
 For production deployment:
 1. Use environment-specific `.env` files
-2. Deploy to Heroku, Railway, or AWS
-3. Update API_URL in script.js to production URL
-4. Use strong JWT_SECRET
+2. Deploy the Node.js backend to a host such as Render, Railway, Fly.io, or Heroku
+3. Keep the frontend on the same origin as the API, or update the API URL if you use a separate domain
+4. Use a strong JWT_SECRET
+
+> Note: GitHub Pages only serves static files, so this app cannot run its Express backend there without a separate Node.js hosting service.
 
 ---
 

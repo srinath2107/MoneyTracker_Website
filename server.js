@@ -7,6 +7,7 @@ const path = require('path');
 require('dotenv').config();
 
 const app = express();
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
 // Middleware
 app.use(cors());
@@ -93,7 +94,7 @@ const verifyToken = (req, res, next) => {
         return res.status(403).json({ message: 'No token provided' });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
         if (err) {
             return res.status(401).json({ message: 'Invalid token' });
         }
@@ -164,7 +165,7 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         // Generate JWT token
-        const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, {
+        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, {
             expiresIn: '7d'
         });
 
@@ -240,6 +241,11 @@ app.delete('/api/expenses/:id', verifyToken, async (req, res) => {
     }
 });
 
+// Health check route for deployment platforms
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+});
+
 // Serve index.html for any non-API route (SPA routing support)
 // Redirect root to login page and serve auth pages individually
 app.get('/', (req, res) => {
@@ -269,6 +275,6 @@ app.get('*', (req, res) => {
 
 // Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server is running on http://0.0.0.0:${PORT}`);
 });
