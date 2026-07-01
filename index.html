@@ -2,106 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expense Tracker - Login</title>
-    <link rel="stylesheet" href="style.css">
+    <meta http-equiv="refresh" content="0; url=./login" />
+    <title>Redirecting...</title>
 </head>
 <body>
-    <!-- Login Section -->
-    <div id="loginSection" class="auth-container">
-        <div class="auth-card">
-            <h1>💰 Expense Tracker</h1>
-            <p style="color: #666; margin-bottom: 30px;">Track your expenses securely</p>
-
-            <div id="authForm">
-                <!-- Login Form -->
-                <form id="loginForm" class="auth-form active-form">
-                    <h2>Login</h2>
-                    <input type="text" id="loginUsername" placeholder="Username" required>
-                    <input type="password" id="loginPassword" placeholder="Password" required>
-                    <button type="submit" class="auth-btn">Login</button>
-                    <p style="margin-top: 15px; text-align: center;">
-                        Don't have an account? 
-                        <a href="#" id="toggleToRegister" style="color: #2563eb; text-decoration: none;">Register here</a>
-                    </p>
-                </form>
-
-                <!-- Register Form -->
-                <form id="registerForm" class="auth-form">
-                    <h2>Create Account</h2>
-                    <input type="text" id="regUsername" placeholder="Choose a username" required>
-                    <input type="password" id="regPassword" placeholder="Password (min 6 chars)" required>
-                    <input type="password" id="regConfirmPassword" placeholder="Confirm Password" required>
-                    <button type="submit" class="auth-btn">Register</button>
-                    <p style="margin-top: 15px; text-align: center;">
-                        Already have an account? 
-                        <a href="#" id="toggleToLogin" style="color: #2563eb; text-decoration: none;">Login here</a>
-                    </p>
-                </form>
-            </div>
-
-            <div id="authMessage" style="display: none; margin-top: 15px; padding: 10px; border-radius: 6px; text-align: center;"></div>
-        </div>
-    </div>
-
-    <!-- Dashboard Section -->
-    <div id="dashboardSection" style="display: none;">
-        <nav class="navbar">
-            <div class="nav-container">
-                <h2>💰 Expense Tracker</h2>
-                <div class="nav-right">
-                    <span id="usernameDisplay"></span>
-                    <button onclick="logout()" class="logout-btn">Logout</button>
-                </div>
-            </div>
-        </nav>
-
-        <div class="dashboard-container">
-            <div class="card">
-                <div class="calender">
-                    <input type="month" id="monthSelector">
-                    <label id="selectedMonthLabel" style="font-weight: bold; margin-top: 10px; display: block;">Select Month:</label>
-                </div>
-
-                <form id="expenseForm">
-                    <input type="number" id="amountInput" step="0.01" placeholder="Enter Amount (₹)" required>
-                    <input type="text" id="typeInput" placeholder="Enter Amount Type" required>
-                    <button type="submit">Add Expense</button>
-                </form>
-
-                <div class="total-box">
-                    <h3>Total: <span style="color: #059669;">₹<span id="totalDisplay">0.00</span></span></h3>
-                </div>
-
-                <h4 style="text-align: left; border-bottom: 2px solid #f4f7f6; padding-bottom: 5px;">History</h4>
-                <div id="expenseList"></div>
-            </div>
-
-            <div class="calendar-card">
-                <h3>📅 Calendar</h3>
-                <div class="calendar-header">
-                    <button id="prevMonth" class="calendar-nav-btn">← Prev</button>
-                    <h4 id="calendarMonth"></h4>
-                    <button id="nextMonth" class="calendar-nav-btn">Next →</button>
-                </div>
-                <div class="calendar-weekdays">
-                    <div>Sun</div>
-                    <div>Mon</div>
-                    <div>Tue</div>
-                    <div>Wed</div>
-                    <div>Thu</div>
-                    <div>Fri</div>
-                    <div>Sat</div>
-                </div>
-                <div id="calendarDays" class="calendar-days"></div>
-                <div id="dayDetails" class="day-details">
-                    <h4 id="selectedDateHeader">Select a date</h4>
-                    <div id="selectedDateExpenses" class="selected-expenses">Click any day to view expenses.</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="script.js"></script>
+    <script>
+        window.location.replace('./login');
+    </script>
 </body>
 </html>

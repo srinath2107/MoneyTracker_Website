@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <title>Login - Money Tracker</title>
     <link rel="stylesheet" href="style.css">
+    <script>
+        if (window.location.pathname.endsWith('/login.html')) {
+            window.location.replace('./login');
+        }
+    </script>
 </head>
 <body>
     <div class="auth-container">
