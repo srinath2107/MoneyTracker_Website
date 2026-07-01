@@ -1,18 +1,208 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 body {
-    font-family: 'Segoe UI';
-    background-color: #f4f7f6;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
     display: flex;
     justify-content: center;
-    padding-top: 50px;
+    align-items: center;
+}
+
+/* ========== AUTHENTICATION STYLES ========== */
+
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    width: 100%;
+}
+
+.auth-card {
+    background: white;
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 400px;
+}
+
+.auth-card h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 28px;
+}
+
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.auth-form h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 25px;
+    font-size: 22px;
+}
+
+/* Ensure Login and Create Account headings are centered */
+#loginForm h2,
+#registerForm h2 {
+    text-align: center;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.auth-form input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.auth-form input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 5px rgba(37, 99, 235, 0.3);
+}
+
+.auth-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.auth-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+}
+
+.auth-message {
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    animation: slideIn 0.3s ease-in-out;
+}
+
+.auth-message.error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-left: 4px solid #dc2626;
+}
+
+.auth-message.success {
+    background-color: #dcfce7;
+    color: #166534;
+    border-left: 4px solid #22c55e;
+}
+
+/* ========== NAVBAR STYLES ========== */
+
+.navbar {
+    background-color: #1e293b;
+    color: white;
+    padding: 15px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.nav-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-container h2 {
+    font-size: 24px;
+    margin: 0;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.logout-btn {
+    background-color: #dc2626 !important;
+    color: white !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    border: none !important;
+    transition: background-color 0.3s !important;
+}
+
+.logout-btn:hover {
+    background-color: #b91c1c !important;
+}
+
+/* ========== DASHBOARD STYLES ========== */
+
+#dashboardSection {
+    width: 100%;
+    background-color: #f8fafc;
+    min-height: 100vh;
+    padding-bottom: 30px;
+}
+
+.dashboard-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 20px;
 }
 
 .card {
     background: white;
-    width: 400px;
     padding: 30px;
     border-radius: 12px;
-    box-shadow: 0 10px 20px ;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
     text-align: center;
+}
+
+.calendar-card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card h2 {
+    color: #1e293b;
+    margin-bottom: 20px;
 }
 
 /* The Month Selector Styling */
@@ -23,29 +213,379 @@ body {
     margin-bottom: 20px;
 }
 
-input[type="month"], input[type="number"] {
-    width: 90%;
+.calender label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+input[type="month"],
+input[type="number"],
+input[type="text"] {
+    width: 100%;
     padding: 10px;
     margin-top: 10px;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
     font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+input[type="month"],
+input[type="number"],
+input[type="text"] {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 5px rgba(37, 99, 235, 0.3);
 }
 
 button {
-    width: 96%;
+    width: 100%;
     padding: 12px;
     margin-top: 15px;
-    background-color: #2563eb;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
     color: white;
     border: none;
     border-radius: 6px;
     font-size: 16px;
+    font-weight: 600;
     cursor: pointer;
+    transition: all 0.3s;
 }
 
-button:hover { 
-    background-color: #1d4ed8; 
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+/* Total Box */
+.total-box {
+    background: linear-gradient(135deg, #dcfce7 0%, #d1fae5 100%);
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+    border-left: 4px solid #22c55e;
+}
+
+.total-box h3 {
+    margin: 0;
+    color: #1e7e34;
+    font-size: 18px;
+}
+
+/* Expense List */
+#expenseList {
+    margin-top: 20px;
+    text-align: left;
+}
+
+.expense-item {
+    background-color: #f1f5f9;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 3px solid #2563eb;
+    transition: all 0.3s;
+}
+
+.expense-item:hover {
+    background-color: #e2e8f0;
+    transform: translateX(5px);
+}
+
+.delete-btn {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.delete-btn:hover {
+    background-color: #fecaca;
+    transform: scale(1.1);
+}
+
+/* Form Styling */
+#expenseForm {
+    background-color: #f8fafc;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+/* ========== CALENDAR STYLES ========== */
+
+.calendar-card {
+    padding: 20px;
+}
+
+.calendar-card h3 {
+    margin-top: 0;
+    color: #1e293b;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.calendar-header h4 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+    min-width: 150px;
+    text-align: center;
+}
+
+.calendar-nav-btn {
+    padding: 8px 12px !important;
+    background: #2563eb !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    transition: all 0.3s !important;
+    width: auto !important;
+    margin-top: 0 !important;
+}
+
+.calendar-nav-btn:hover {
+    background: #1d4ed8 !important;
+}
+
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.calendar-weekdays div {
+    font-weight: bold;
+    color: #666;
+    padding: 10px 0;
+    font-size: 13px;
+}
+
+.calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    background-color: #f8fafc;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.calendar-day:hover {
+    background-color: #e0e7ff;
+    border-color: #2563eb;
+}
+
+.calendar-day.other-month {
+    color: #ccc;
+    background-color: #f1f5f9;
+    cursor: default;
+}
+
+.calendar-day.other-month:hover {
+    background-color: #f1f5f9;
+    border-color: #e2e8f0;
+}
+
+.calendar-day.has-expense {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border-color: #2563eb;
+    color: #1e40af;
+    font-weight: bold;
+}
+
+.day-details {
+    margin-top: 20px;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 15px;
+    text-align: left;
+}
+
+.day-details h4 {
+    margin: 0 0 10px;
+    font-size: 16px;
+    color: #1e293b;
+}
+
+.selected-expenses {
+    font-size: 14px;
+    color: #334155;
+}
+
+.day-expense-summary {
+    margin-bottom: 12px;
+    font-weight: 700;
+}
+
+.day-expense-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.day-expense-row:last-child {
+    border-bottom: none;
+}
+
+.day-expense-row span:first-child {
+    color: #0f172a;
+}
+
+.day-expense-row span:last-child {
+    color: #475569;
+    font-style: italic;
+}
+
+.calendar-day.has-expense:hover {
+    background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
+}
+
+.calendar-day.today {
+    background-color: #fef08a;
+    border: 2px solid #eab308;
+}
+
+.expense-badge {
+    font-size: 10px;
+    color: #2563eb;
+    margin-top: 2px;
+    font-weight: bold;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    /* Ensure the overall page fits the viewport and stack the dashboard content */
+    body {
+        align-items: flex-start;
+    }
+
+    #dashboardSection {
+        min-height: 100vh;
+        padding: 20px 0;
+    }
+
+    .dashboard-container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        width: min(100%, 500px);
+        margin: 0 auto;
+        padding: 0 12px;
+    }
+
+    .card,
+    .calendar-card {
+        width: 100%;
+        padding: 20px;
+    }
+
+    .calendar-card {
+        order: 2;
+        margin-top: 0;
+    }
+
+    .nav-container {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .nav-right {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    /* Improve tap targets and input widths */
+    button,
+    .auth-btn,
+    input[type="number"],
+    input[type="text"],
+    input[type="month"] {
+        min-height: 44px;
+        width: 100%;
+    }
+
+    .calender {
+        margin-bottom: 16px;
+    }
+
+    .calendar-days {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .calendar-day {
+        aspect-ratio: 1;
+        min-height: 40px;
+        font-size: 12px;
+        padding: 4px;
+    }
+
+    .calendar-weekdays div {
+        font-size: 11px;
+        padding: 8px 0;
+    }
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+    .dashboard-container {
+        grid-template-columns: 1fr;
+        gap: 24px;
+        padding: 0 20px;
+    }
+
+    .card,
+    .calendar-card {
+        width: 100%;
+        padding: 24px;
+    }
+
+    .calendar-header {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .calendar-header h4 {
+        min-width: 120px;
+    }
 }
 
 .total-box {
