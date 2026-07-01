@@ -59,7 +59,7 @@ async function handleLogin(e) {
 
         localStorage.setItem('token', 'local');
         localStorage.setItem('user', JSON.stringify({ id: existingUser.id, username: existingUser.username }));
-        window.location.href = './index.html#dashboard';
+        window.location.href = './dashboard';
     } catch (err) {
         showAuthMessage('Unable to log in right now.', 'error');
     }
@@ -102,7 +102,7 @@ async function handleRegister(e) {
         saveStoredExpenses(expensesByUser);
 
         showAuthMessage('Registration successful! Redirecting to login...', 'success');
-        setTimeout(() => { window.location.href = './index.html#login'; }, 1200);
+        setTimeout(() => { window.location.href = './login'; }, 1200);
     } catch (err) {
         showAuthMessage('Unable to register right now.', 'error');
     }

@@ -76,23 +76,23 @@ function toggleForms() {
 
 // Client-side navigation helpers
 function navigateTo(path) {
-    const route = path.startsWith('#') ? path.slice(1) : path;
-    const target = `${window.location.pathname}${window.location.search}#${route}`;
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    const target = normalized === '/' ? '/login' : normalized;
     history.pushState({}, '', target);
     router();
 }
 
 function router() {
     const el = getElements();
-    const route = (location.hash || '').replace(/^#/, '').toLowerCase();
-    const path = location.pathname.toLowerCase();
-    const isIndexPage = path.endsWith('/index.html') || path === '/' || path.endsWith('/');
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    const isLoginPage = path === '/login' || path === '/login.html' || path === '/';
+    const isRegisterPage = path === '/register' || path === '/register.html';
+    const isDashboardPage = path === '/dashboard' || path === '/dashboard.html';
 
-    if (route === 'dashboard' || path.endsWith('/dashboard')) {
+    if (isDashboardPage) {
         // Require authentication
         if (!localStorage.getItem('token')) {
-            const target = `${window.location.pathname}${window.location.search}#login`;
-            history.replaceState({}, '', target);
+            history.replaceState({}, '', '/login');
             return router();
         }
 
@@ -108,24 +108,17 @@ function router() {
 
         el.usernameDisplay.textContent = 'Welcome, ' + (currentUser?.username || '');
 
-        // Ensure calendar/month set and expenses loaded
         const today = new Date();
         const currentMonthString = today.toISOString().slice(0, 7);
         if (!el.monthSelector.value) el.monthSelector.value = currentMonthString;
         currentCalendarMonth = new Date(el.monthSelector.value + '-01');
         generateCalendar();
         fetchExpenses();
-    } else if (route === 'register' || path.endsWith('/register') || path.endsWith('/register.html')) {
+    } else if (isRegisterPage) {
         el.loginSection.style.display = 'block';
         el.dashboardSection.style.display = 'none';
         el.registerForm.classList.add('active-form');
         el.loginForm.classList.remove('active-form');
-    } else if (route === 'login' || path.endsWith('/login') || path.endsWith('/login.html') || isIndexPage) {
-        // default -> login
-        el.loginSection.style.display = 'block';
-        el.dashboardSection.style.display = 'none';
-        el.loginForm.classList.add('active-form');
-        el.registerForm.classList.remove('active-form');
     } else {
         el.loginSection.style.display = 'block';
         el.dashboardSection.style.display = 'none';
