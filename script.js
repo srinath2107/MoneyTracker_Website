@@ -2,6 +2,13 @@
 const API_URL = (() => {
     if (typeof window === 'undefined') return '/api';
 
+    const params = new URLSearchParams(window.location.search);
+    const configuredApiUrl = params.get('api') || window.__API_URL__ || '';
+
+    if (configuredApiUrl) {
+        return configuredApiUrl.replace(/\/$/, '');
+    }
+
     const origin = window.location.origin;
     if (!origin || origin === 'null') {
         return 'http://localhost:5000/api';
@@ -49,18 +56,23 @@ function toggleForms() {
 
 // Client-side navigation helpers
 function navigateTo(path) {
-    history.pushState({}, '', path);
+    const route = path.startsWith('#') ? path.slice(1) : path;
+    const target = `${window.location.pathname}${window.location.search}#${route}`;
+    history.pushState({}, '', target);
     router();
 }
 
 function router() {
     const el = getElements();
-    const path = location.pathname;
+    const route = (location.hash || '').replace(/^#/, '').toLowerCase();
+    const path = location.pathname.toLowerCase();
+    const isIndexPage = path.endsWith('/index.html') || path === '/' || path.endsWith('/');
 
-    if (path === '/dashboard') {
+    if (route === 'dashboard' || path.endsWith('/dashboard')) {
         // Require authentication
         if (!localStorage.getItem('token')) {
-            history.replaceState({}, '', '/');
+            const target = `${window.location.pathname}${window.location.search}#login`;
+            history.replaceState({}, '', target);
             return router();
         }
 
@@ -83,13 +95,18 @@ function router() {
         currentCalendarMonth = new Date(el.monthSelector.value + '-01');
         generateCalendar();
         fetchExpenses();
-    } else if (path === '/register') {
+    } else if (route === 'register' || path.endsWith('/register') || path.endsWith('/register.html')) {
         el.loginSection.style.display = 'block';
         el.dashboardSection.style.display = 'none';
         el.registerForm.classList.add('active-form');
         el.loginForm.classList.remove('active-form');
-    } else {
+    } else if (route === 'login' || path.endsWith('/login') || path.endsWith('/login.html') || isIndexPage) {
         // default -> login
+        el.loginSection.style.display = 'block';
+        el.dashboardSection.style.display = 'none';
+        el.loginForm.classList.add('active-form');
+        el.registerForm.classList.remove('active-form');
+    } else {
         el.loginSection.style.display = 'block';
         el.dashboardSection.style.display = 'none';
         el.loginForm.classList.add('active-form');
@@ -116,13 +133,13 @@ async function handleLogin(e) {
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
             currentUser = data.user;
-            navigateTo('/dashboard');
+            navigateTo('dashboard');
             // fetchExpenses will be called by router when entering dashboard
         } else {
             showAuthMessage(data.message, 'error');
         }
     } catch (error) {
-        showAuthMessage('Connection error: ' + error.message, 'error');
+        showAuthMessage('Connection error: ' + error.message + '. If you are using GitHub Pages, host the backend separately and open the site with ?api=https://your-backend-url/api', 'error');
     }
 }
 
@@ -178,7 +195,7 @@ function logout() {
     document.getElementById('regPassword').value = '';
     document.getElementById('regConfirmPassword').value = '';
     el.authMessage.style.display = 'none';
-    navigateTo('/');
+    navigateTo('login');
 }
 
 // ========== EXPENSE FUNCTIONS ==========
@@ -414,14 +431,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (toggleToRegister) {
         toggleToRegister.addEventListener('click', function(e) {
             e.preventDefault();
-            navigateTo('/register');
+            navigateTo('register');
         });
     }
     
     if (toggleToLogin) {
         toggleToLogin.addEventListener('click', function(e) {
             e.preventDefault();
-            navigateTo('/');
+            navigateTo('login');
         });
     }
 

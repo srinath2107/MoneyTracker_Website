@@ -1,4 +1,17 @@
-const API_URL = 'http://localhost:5000/api';
+const API_URL = (() => {
+    const params = new URLSearchParams(window.location.search);
+    const configuredApiUrl = params.get('api') || window.__API_URL__ || '';
+
+    if (configuredApiUrl) {
+        return configuredApiUrl.replace(/\/$/, '');
+    }
+
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:5000/api';
+    }
+
+    return `${window.location.origin}/api`;
+})();
 
 function showAuthMessage(msg, type) {
     const el = document.getElementById('authMessage');
@@ -23,7 +36,7 @@ async function handleLogin(e) {
         if (response.ok) {
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
-            window.location.href = '/dashboard';
+            window.location.href = './index.html#dashboard';
         } else {
             showAuthMessage(data.message, 'error');
         }
@@ -48,7 +61,7 @@ async function handleRegister(e) {
         const data = await response.json();
         if (response.ok) {
             showAuthMessage('Registration successful! Redirecting to login...', 'success');
-            setTimeout(() => { window.location.href = '/login'; }, 1200);
+            setTimeout(() => { window.location.href = './index.html#login'; }, 1200);
         } else {
             showAuthMessage(data.message, 'error');
         }
