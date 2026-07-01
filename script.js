@@ -1,28 +1,48 @@
-// API Base URL
-const API_URL = (() => {
-    if (typeof window === 'undefined') return '/api';
-
-    const params = new URLSearchParams(window.location.search);
-    const configuredApiUrl = params.get('api') || window.__API_URL__ || '';
-
-    if (configuredApiUrl) {
-        return configuredApiUrl.replace(/\/$/, '');
-    }
-
-    const origin = window.location.origin;
-    if (!origin || origin === 'null') {
-        return 'http://localhost:5000/api';
-    }
-
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        return 'http://localhost:5000/api';
-    }
-
-    return `${origin}/api`;
-})();
-
 let expenses = [];
 let currentUser = null;
+
+function getStoredUsers() {
+    try {
+        return JSON.parse(localStorage.getItem('moneyTrackerUsers') || '[]');
+    } catch (error) {
+        return [];
+    }
+}
+
+function saveStoredUsers(users) {
+    localStorage.setItem('moneyTrackerUsers', JSON.stringify(users));
+}
+
+function getStoredExpenses() {
+    try {
+        return JSON.parse(localStorage.getItem('moneyTrackerExpenses') || '{}');
+    } catch (error) {
+        return {};
+    }
+}
+
+function saveStoredExpenses(expensesByUser) {
+    localStorage.setItem('moneyTrackerExpenses', JSON.stringify(expensesByUser));
+}
+
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + 'money-tracker-static');
+    const buffer = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buffer)).map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function getCurrentUserKey() {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+        try {
+            return JSON.parse(storedUser).username;
+        } catch (error) {
+            return null;
+        }
+    }
+    return currentUser?.username || null;
+}
 
 // DOM Elements (lazy loading)
 function getElements() {
@@ -117,55 +137,73 @@ function router() {
 async function handleLogin(e) {
     e.preventDefault();
     const el = getElements();
-    const username = document.getElementById('loginUsername').value;
+    const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
 
+    if (!username || !password) {
+        showAuthMessage('Please enter both username and password.', 'error');
+        return;
+    }
+
     try {
-        const response = await fetch(`${API_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
+        const users = getStoredUsers();
+        const existingUser = users.find(user => user.username.toLowerCase() === username.toLowerCase());
+        const passwordHash = await hashPassword(password);
 
-        const data = await response.json();
-
-        if (response.ok) {
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            currentUser = data.user;
-            navigateTo('dashboard');
-            // fetchExpenses will be called by router when entering dashboard
-        } else {
-            showAuthMessage(data.message, 'error');
+        if (!existingUser || existingUser.passwordHash !== passwordHash) {
+            showAuthMessage('Invalid username or password.', 'error');
+            return;
         }
+
+        localStorage.setItem('token', 'local');
+        localStorage.setItem('user', JSON.stringify({ id: existingUser.id, username: existingUser.username }));
+        currentUser = { id: existingUser.id, username: existingUser.username };
+        navigateTo('dashboard');
     } catch (error) {
-        showAuthMessage('Connection error: ' + error.message + '. If you are using GitHub Pages, host the backend separately and open the site with ?api=https://your-backend-url/api', 'error');
+        showAuthMessage('Unable to log in right now.', 'error');
     }
 }
 
 async function handleRegister(e) {
     e.preventDefault();
-    const username = document.getElementById('regUsername').value;
+    const username = document.getElementById('regUsername').value.trim();
     const password = document.getElementById('regPassword').value;
     const confirmPassword = document.getElementById('regConfirmPassword').value;
 
+    if (!username || !password || !confirmPassword) {
+        showAuthMessage('Please fill in all fields.', 'error');
+        return;
+    }
+
+    if (password.length < 6) {
+        showAuthMessage('Password must be at least 6 characters.', 'error');
+        return;
+    }
+
+    if (password !== confirmPassword) {
+        showAuthMessage('Passwords do not match.', 'error');
+        return;
+    }
+
     try {
-        const response = await fetch(`${API_URL}/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password, confirmPassword })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            showAuthMessage('Registration successful! Please login.', 'success');
-            setTimeout(() => toggleForms(), 1500);
-        } else {
-            showAuthMessage(data.message, 'error');
+        const users = getStoredUsers();
+        if (users.some(user => user.username.toLowerCase() === username.toLowerCase())) {
+            showAuthMessage('Username already exists.', 'error');
+            return;
         }
+
+        const passwordHash = await hashPassword(password);
+        users.push({ id: Date.now(), username, passwordHash });
+        saveStoredUsers(users);
+
+        const expensesByUser = getStoredExpenses();
+        expensesByUser[username] = [];
+        saveStoredExpenses(expensesByUser);
+
+        showAuthMessage('Registration successful! Please login.', 'success');
+        setTimeout(() => toggleForms(), 1500);
     } catch (error) {
-        showAuthMessage('Connection error: ' + error.message, 'error');
+        showAuthMessage('Unable to register right now.', 'error');
     }
 }
 
@@ -200,80 +238,64 @@ function logout() {
 
 // ========== EXPENSE FUNCTIONS ==========
 
-async function fetchExpenses() {
-    const token = localStorage.getItem('token');
-    
-    try {
-        const response = await fetch(`${API_URL}/expenses`, {
-            method: 'GET',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            expenses = data.expenses;
-            updateScreen();
-        } else if (response.status === 401) {
-            logout();
-        }
-    } catch (error) {
-        console.error('Error fetching expenses:', error);
+function fetchExpenses() {
+    const username = getCurrentUserKey();
+    if (!username) {
+        expenses = [];
+        updateScreen();
+        return;
     }
+
+    const expensesByUser = getStoredExpenses();
+    expenses = expensesByUser[username] || [];
+    updateScreen();
 }
 
-async function addExpense(amount, type, date) {
-    const token = localStorage.getItem('token');
+function addExpense(amount, type, date) {
     const el = getElements();
-    
-    try {
-        const response = await fetch(`${API_URL}/expenses`, {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ amount: parseFloat(amount), expense_type: type, date })
-        });
+    const username = getCurrentUserKey();
 
-        if (response.ok) {
-            fetchExpenses();
-            el.amountInput.value = '';
-            el.typeInput.value = '';
-        } else {
-            const data = await response.json();
-            alert('Error: ' + data.message);
-        }
-    } catch (error) {
-        console.error('Error adding expense:', error);
-        alert('Error adding expense');
+    if (!username) {
+        alert('Please log in first.');
+        return;
     }
+
+    const parsedAmount = parseFloat(amount);
+    if (Number.isNaN(parsedAmount)) {
+        alert('Please enter a valid amount.');
+        return;
+    }
+
+    const expenseEntry = {
+        id: Date.now(),
+        amount: parsedAmount,
+        expense_type: type,
+        date
+    };
+
+    const expensesByUser = getStoredExpenses();
+    const userExpenses = expensesByUser[username] || [];
+    userExpenses.push(expenseEntry);
+    expensesByUser[username] = userExpenses;
+    saveStoredExpenses(expensesByUser);
+
+    expenses = userExpenses;
+    updateScreen();
+    el.amountInput.value = '';
+    el.typeInput.value = '';
 }
 
-async function deleteItem(id) {
-    const token = localStorage.getItem('token');
-    
-    try {
-        const response = await fetch(`${API_URL}/expenses/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            }
-        });
+function deleteItem(id) {
+    const username = getCurrentUserKey();
+    if (!username) return;
 
-        if (response.ok) {
-            fetchExpenses();
-        } else {
-            const data = await response.json();
-            alert('Error: ' + data.message);
-        }
-    } catch (error) {
-        console.error('Error deleting expense:', error);
-        alert('Error deleting expense');
-    }
+    const expensesByUser = getStoredExpenses();
+    const userExpenses = (expensesByUser[username] || []).filter(exp => exp.id !== id);
+    expensesByUser[username] = userExpenses;
+    saveStoredExpenses(expensesByUser);
+
+    expenses = userExpenses;
+    updateScreen();
 }
 
 function updateScreen() {
