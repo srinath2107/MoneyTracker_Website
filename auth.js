@@ -1,34 +1,3 @@
-function getStoredUsers() {
-    try {
-        return JSON.parse(localStorage.getItem('moneyTrackerUsers') || '[]');
-    } catch (error) {
-        return [];
-    }
-}
-
-function saveStoredUsers(users) {
-    localStorage.setItem('moneyTrackerUsers', JSON.stringify(users));
-}
-
-function getStoredExpenses() {
-    try {
-        return JSON.parse(localStorage.getItem('moneyTrackerExpenses') || '{}');
-    } catch (error) {
-        return {};
-    }
-}
-
-function saveStoredExpenses(expensesByUser) {
-    localStorage.setItem('moneyTrackerExpenses', JSON.stringify(expensesByUser));
-}
-
-async function hashPassword(password) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password + 'money-tracker-static');
-    const buffer = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(buffer)).map(byte => byte.toString(16).padStart(2, '0')).join('');
-}
-
 function showAuthMessage(msg, type) {
     const el = document.getElementById('authMessage');
     if (!el) return;
@@ -48,20 +17,20 @@ async function handleLogin(e) {
     }
 
     try {
-        const users = getStoredUsers();
-        const existingUser = users.find(user => user.username.toLowerCase() === username.toLowerCase());
-        const passwordHash = await hashPassword(password);
+        const data = await apiRequest('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ username, password })
+        });
 
-        if (!existingUser || existingUser.passwordHash !== passwordHash) {
-            showAuthMessage('Invalid username or password.', 'error');
-            return;
-        }
-
-        localStorage.setItem('token', 'local');
-        localStorage.setItem('user', JSON.stringify({ id: existingUser.id, username: existingUser.username }));
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
         window.location.href = './dashboard';
     } catch (err) {
-        showAuthMessage('Unable to log in right now.', 'error');
+        if (err.message === 'Failed to fetch' && window.API_BASE_URL) {
+            showAuthMessage('Cannot reach server. Check that the backend is deployed and REMOTE_API_URL in config.js is correct.', 'error');
+            return;
+        }
+        showAuthMessage(err.message || 'Unable to log in right now.', 'error');
     }
 }
 
@@ -87,24 +56,19 @@ async function handleRegister(e) {
     }
 
     try {
-        const users = getStoredUsers();
-        if (users.some(user => user.username.toLowerCase() === username.toLowerCase())) {
-            showAuthMessage('Username already exists.', 'error');
-            return;
-        }
-
-        const passwordHash = await hashPassword(password);
-        users.push({ id: Date.now(), username, passwordHash });
-        saveStoredUsers(users);
-
-        const expensesByUser = getStoredExpenses();
-        expensesByUser[username] = [];
-        saveStoredExpenses(expensesByUser);
+        await apiRequest('/api/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({ username, password, confirmPassword })
+        });
 
         showAuthMessage('Registration successful! Redirecting to login...', 'success');
         setTimeout(() => { window.location.href = './login'; }, 1200);
     } catch (err) {
-        showAuthMessage('Unable to register right now.', 'error');
+        if (err.message === 'Failed to fetch' && window.API_BASE_URL) {
+            showAuthMessage('Cannot reach server. Check that the backend is deployed and REMOTE_API_URL in config.js is correct.', 'error');
+            return;
+        }
+        showAuthMessage(err.message || 'Unable to register right now.', 'error');
     }
 }
 

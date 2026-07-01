@@ -124,7 +124,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     try {
         // Check if user already exists
-        const existingUser = await getQuery('SELECT username FROM users WHERE username = ?', [username]);
+        const existingUser = await getQuery('SELECT username FROM users WHERE LOWER(username) = LOWER(?)', [username]);
         
         if (existingUser) {
             return res.status(400).json({ message: 'Username already exists' });
@@ -152,7 +152,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     try {
-        const user = await getQuery('SELECT id, username, password FROM users WHERE username = ?', [username]);
+        const user = await getQuery('SELECT id, username, password FROM users WHERE LOWER(username) = LOWER(?)', [username]);
 
         if (!user) {
             return res.status(401).json({ message: 'Invalid username or password' });

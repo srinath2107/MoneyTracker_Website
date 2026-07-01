@@ -1,37 +1,6 @@
 let expenses = [];
 let currentUser = null;
 
-function getStoredUsers() {
-    try {
-        return JSON.parse(localStorage.getItem('moneyTrackerUsers') || '[]');
-    } catch (error) {
-        return [];
-    }
-}
-
-function saveStoredUsers(users) {
-    localStorage.setItem('moneyTrackerUsers', JSON.stringify(users));
-}
-
-function getStoredExpenses() {
-    try {
-        return JSON.parse(localStorage.getItem('moneyTrackerExpenses') || '{}');
-    } catch (error) {
-        return {};
-    }
-}
-
-function saveStoredExpenses(expensesByUser) {
-    localStorage.setItem('moneyTrackerExpenses', JSON.stringify(expensesByUser));
-}
-
-async function hashPassword(password) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password + 'money-tracker-static');
-    const buffer = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(buffer)).map(byte => byte.toString(16).padStart(2, '0')).join('');
-}
-
 function getCurrentUserKey() {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -131,7 +100,6 @@ function router() {
 
 async function handleLogin(e) {
     e.preventDefault();
-    const el = getElements();
     const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
 
@@ -141,21 +109,17 @@ async function handleLogin(e) {
     }
 
     try {
-        const users = getStoredUsers();
-        const existingUser = users.find(user => user.username.toLowerCase() === username.toLowerCase());
-        const passwordHash = await hashPassword(password);
+        const data = await apiRequest('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ username, password })
+        });
 
-        if (!existingUser || existingUser.passwordHash !== passwordHash) {
-            showAuthMessage('Invalid username or password.', 'error');
-            return;
-        }
-
-        localStorage.setItem('token', 'local');
-        localStorage.setItem('user', JSON.stringify({ id: existingUser.id, username: existingUser.username }));
-        currentUser = { id: existingUser.id, username: existingUser.username };
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        currentUser = data.user;
         navigateTo('dashboard');
     } catch (error) {
-        showAuthMessage('Unable to log in right now.', 'error');
+        showAuthMessage(error.message || 'Unable to log in right now.', 'error');
     }
 }
 
@@ -181,24 +145,15 @@ async function handleRegister(e) {
     }
 
     try {
-        const users = getStoredUsers();
-        if (users.some(user => user.username.toLowerCase() === username.toLowerCase())) {
-            showAuthMessage('Username already exists.', 'error');
-            return;
-        }
-
-        const passwordHash = await hashPassword(password);
-        users.push({ id: Date.now(), username, passwordHash });
-        saveStoredUsers(users);
-
-        const expensesByUser = getStoredExpenses();
-        expensesByUser[username] = [];
-        saveStoredExpenses(expensesByUser);
+        await apiRequest('/api/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({ username, password, confirmPassword })
+        });
 
         showAuthMessage('Registration successful! Please login.', 'success');
         setTimeout(() => toggleForms(), 1500);
     } catch (error) {
-        showAuthMessage('Unable to register right now.', 'error');
+        showAuthMessage(error.message || 'Unable to register right now.', 'error');
     }
 }
 
@@ -265,24 +220,31 @@ function initDashboardPage() {
 
 // ========== EXPENSE FUNCTIONS ==========
 
-function fetchExpenses() {
-    const username = getCurrentUserKey();
-    if (!username) {
+async function fetchExpenses() {
+    if (!localStorage.getItem('token')) {
         expenses = [];
         updateScreen();
         return;
     }
 
-    const expensesByUser = getStoredExpenses();
-    expenses = expensesByUser[username] || [];
-    updateScreen();
+    try {
+        const data = await apiRequest('/api/expenses', {
+            headers: authHeaders()
+        });
+        expenses = data.expenses || [];
+        updateScreen();
+    } catch (error) {
+        handleAuthFailure(error);
+        if (error.status !== 401 && error.status !== 403) {
+            console.error('Failed to load expenses:', error.message);
+        }
+    }
 }
 
-function addExpense(amount, type, date) {
+async function addExpense(amount, type, date) {
     const el = getElements();
-    const username = getCurrentUserKey();
 
-    if (!username) {
+    if (!localStorage.getItem('token')) {
         alert('Please log in first.');
         return;
     }
@@ -293,36 +255,39 @@ function addExpense(amount, type, date) {
         return;
     }
 
-    const expenseEntry = {
-        id: Date.now(),
-        amount: parsedAmount,
-        expense_type: type,
-        date
-    };
+    try {
+        await apiRequest('/api/expenses', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({
+                amount: parsedAmount,
+                expense_type: type,
+                date
+            })
+        });
 
-    const expensesByUser = getStoredExpenses();
-    const userExpenses = expensesByUser[username] || [];
-    userExpenses.push(expenseEntry);
-    expensesByUser[username] = userExpenses;
-    saveStoredExpenses(expensesByUser);
-
-    expenses = userExpenses;
-    updateScreen();
-    el.amountInput.value = '';
-    el.typeInput.value = '';
+        await fetchExpenses();
+        el.amountInput.value = '';
+        el.typeInput.value = '';
+    } catch (error) {
+        handleAuthFailure(error);
+        alert(error.message || 'Unable to add expense.');
+    }
 }
 
-function deleteItem(id) {
-    const username = getCurrentUserKey();
-    if (!username) return;
+async function deleteItem(id) {
+    if (!localStorage.getItem('token')) return;
 
-    const expensesByUser = getStoredExpenses();
-    const userExpenses = (expensesByUser[username] || []).filter(exp => exp.id !== id);
-    expensesByUser[username] = userExpenses;
-    saveStoredExpenses(expensesByUser);
-
-    expenses = userExpenses;
-    updateScreen();
+    try {
+        await apiRequest(`/api/expenses/${id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+        });
+        await fetchExpenses();
+    } catch (error) {
+        handleAuthFailure(error);
+        alert(error.message || 'Unable to delete expense.');
+    }
 }
 
 function updateScreen() {
@@ -464,12 +429,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (isDashboardPage) {
         initDashboardPage();
 
-        el.expenseForm.addEventListener('submit', function(event) {
+        el.expenseForm.addEventListener('submit', async function(event) {
             event.preventDefault();
             const amount = el.amountInput.value;
             const type = el.typeInput.value.trim();
             const today = new Date().toISOString().split('T')[0];
-            addExpense(amount, type, today);
+            await addExpense(amount, type, today);
         });
 
         el.monthSelector.addEventListener('change', updateScreen);
@@ -498,12 +463,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (el.registerForm) el.registerForm.addEventListener('submit', handleRegister);
 
     if (el.expenseForm) {
-        el.expenseForm.addEventListener('submit', function(event) {
+        el.expenseForm.addEventListener('submit', async function(event) {
             event.preventDefault();
             const amount = el.amountInput.value;
             const type = el.typeInput.value.trim();
             const today = new Date().toISOString().split('T')[0];
-            addExpense(amount, type, today);
+            await addExpense(amount, type, today);
         });
     }
 
