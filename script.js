@@ -205,8 +205,19 @@ function initDashboardPage() {
         return;
     }
 
-    const stored = localStorage.getItem('user');
-    if (stored) currentUser = JSON.parse(stored);
+    // Add this right when the dashboard loads
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+        try {
+            const parsedUser = JSON.parse(storedUser);
+            if (parsedUser && parsedUser.username) {
+                // Update the text directly on the screen
+                document.getElementById('usernameDisplay').innerText = 'Welcome, ' + parsedUser.username;
+            }
+        } catch (error) {
+            console.error("Could not parse user name.");
+        }
+    }
 
     el.usernameDisplay.textContent = 'Welcome, ' + (currentUser?.username || '');
 
@@ -269,7 +280,7 @@ async function addExpense(amount, type, date) {
             body: JSON.stringify({
                 text: type,
                 amount: parseFloat(amount),
-                type: 'expense',
+                type: type,
                 date: date 
             })
         });
