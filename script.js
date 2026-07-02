@@ -97,7 +97,7 @@ function router() {
             if (stored) currentUser = JSON.parse(stored);
         }
 
-        el.usernameDisplay.textContent = 'Welcome, ' + (currentUser?.username || '');
+        
 
         const today = new Date();
         const currentMonthString = today.toISOString().slice(0, 7);
