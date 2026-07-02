@@ -3,7 +3,7 @@ let currentUser = null;
 function updateUI() {
     const el = getElements();
     const storedUser = localStorage.getItem('user');
-    
+    console.log("Stored user data in localStorage:", storedUser); 
     if (storedUser) {
         try {
             const userObj = JSON.parse(storedUser);
