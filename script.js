@@ -229,15 +229,21 @@ async function fetchExpenses() {
         });
         
         if (response.ok) {
-            expenses = await response.json(); // Load the server data into your global array
-            // Map the server 'text' field to match your UI's expected format if needed
-            expenses = expenses.map(exp => ({
+            let serverData = await response.json();
+            
+            // Smart unwrapping: Check if the server wrapped the array in an object
+            let expensesArray = Array.isArray(serverData) 
+                ? serverData 
+                : (serverData.data || serverData.transactions || serverData.expenses || []);
+
+            // Map the unwrapped array safely
+            expenses = expensesArray.map(exp => ({
                 ...exp,
-                date: exp.date || new Date().toISOString().split('T')[0], // Fallback if your DB doesn't store dates yet
+                date: exp.date || new Date().toISOString().split('T')[0],
                 expense_type: exp.type || exp.text 
             }));
             
-            updateScreen(); // This will automatically trigger generateCalendar()
+            updateScreen(); 
         }
     } catch (error) {
         console.error("Failed to fetch expenses:", error);
