@@ -1,5 +1,23 @@
 let expenses = [];
 let currentUser = null;
+function updateUI() {
+    const el = getElements();
+    const storedUser = localStorage.getItem('user');
+    
+    if (storedUser) {
+        try {
+            const userObj = JSON.parse(storedUser);
+            if (userObj && userObj.username) {
+                // Update the display if the element exists
+                if (el.usernameDisplay) {
+                    el.usernameDisplay.textContent = 'Welcome, ' + userObj.username;
+                }
+            }
+        } catch (e) {
+            console.error("Error parsing user:", e);
+        }
+    }
+}
 
 function getCurrentUserKey() {
     const storedUser = localStorage.getItem('user');
@@ -71,7 +89,9 @@ function router() {
         el.dashboardSection.style.display = 'block';
         el.registerForm.classList.remove('active-form');
         el.loginForm.classList.add('active-form');
-
+        
+        updateUI();
+        
         if (!currentUser) {
             const stored = localStorage.getItem('user');
             if (stored) currentUser = JSON.parse(stored);
@@ -205,21 +225,8 @@ function initDashboardPage() {
         return;
     }
 
-    // Add this right when the dashboard loads
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-        try {
-            const parsedUser = JSON.parse(storedUser);
-            if (parsedUser && parsedUser.username) {
-                // Update the text directly on the screen
-                document.getElementById('usernameDisplay').innerText = 'Welcome, ' + parsedUser.username;
-            }
-        } catch (error) {
-            console.error("Could not parse user name.");
-        }
-    }
-
-    el.usernameDisplay.textContent = 'Welcome, ' + (currentUser?.username || '');
+    // Call the new reliable updater
+    updateUI();
 
     const today = new Date();
     const currentMonthString = today.toISOString().slice(0, 7);
