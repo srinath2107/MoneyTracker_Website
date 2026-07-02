@@ -98,35 +98,42 @@ function router() {
     }
 }
 
-function handleLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
 
     const username = document.getElementById("loginUsername").value.trim();
     const password = document.getElementById("loginPassword").value;
 
-    const users = JSON.parse(localStorage.getItem("users")) || {};
+    try {
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
 
-    if (!users[username]) {
-        showAuthMessage("User not found. Please register first.", "error");
-        return;
+        const data = await response.json();
+
+        if (response.ok) {
+            // Save the real security token from your server
+            localStorage.setItem("token", data.token);
+            
+            // Update the current user state
+            currentUser = { username: username };
+            localStorage.setItem("user", JSON.stringify(currentUser));
+            
+            // Route to dashboard
+            navigateTo('dashboard');
+            router();
+        } else {
+            showAuthMessage(data.error || "Invalid username or password.", "error");
+        }
+    } catch (error) {
+        console.error("Login error:", error);
+        showAuthMessage("Cannot connect to server.", "error");
     }
-
-    if (users[username].password !== password) {
-        showAuthMessage("Invalid password.", "error");
-        return;
-    }
-
-    currentUser = {
-        username: username
-    };
-
-    localStorage.setItem("user", JSON.stringify(currentUser));
-    localStorage.setItem("token", "logged_in");
-
-    window.location.href = "dashboard.html";
 }
 
-function handleRegister(e) {
+async function handleRegister(e) {
     e.preventDefault();
 
     const username = document.getElementById("regUsername").value.trim();
@@ -143,27 +150,30 @@ function handleRegister(e) {
         return;
     }
 
-    let users = JSON.parse(localStorage.getItem("users")) || {};
+    try {
+        const response = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
 
-    if (users[username]) {
-        showAuthMessage("Username already exists.", "error");
-        return;
+        const data = await response.json();
+
+        if (response.ok) {
+            showAuthMessage("Registration successful!", "success");
+            setTimeout(() => {
+                navigateTo('login');
+                router();
+            }, 1000);
+        } else {
+            // Server rejected it (e.g., username taken)
+            showAuthMessage(data.error || "Registration failed.", "error");
+        }
+    } catch (error) {
+        console.error("Registration error:", error);
+        showAuthMessage("Cannot connect to server.", "error");
     }
-
-    users[username] = {
-        password: password,
-        expenses: []
-    };
-
-    localStorage.setItem("users", JSON.stringify(users));
-
-    showAuthMessage("Registration successful!", "success");
-
-    setTimeout(() => {
-        window.location.href = "login.html";
-    }, 1000);
 }
-
 function showAuthMessage(message, type) {
     const el = getElements();
     el.authMessage.textContent = message;
@@ -209,79 +219,84 @@ function initDashboardPage() {
 }
 
 // ========== EXPENSE FUNCTIONS ==========
+async function fetchExpenses() {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-function fetchExpenses() {
-
-    if (!currentUser) return;
-
-    const users = JSON.parse(localStorage.getItem("users")) || {};
-
-    if (!users[currentUser.username]) {
-        expenses = [];
-    } else {
-        expenses = users[currentUser.username].expenses || [];
+    try {
+        const response = await fetch('/api/transactions', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            expenses = await response.json(); // Load the server data into your global array
+            // Map the server 'text' field to match your UI's expected format if needed
+            expenses = expenses.map(exp => ({
+                ...exp,
+                date: exp.date || new Date().toISOString().split('T')[0], // Fallback if your DB doesn't store dates yet
+                expense_type: exp.type || exp.text 
+            }));
+            
+            updateScreen(); // This will automatically trigger generateCalendar()
+        }
+    } catch (error) {
+        console.error("Failed to fetch expenses:", error);
     }
-
-    renderExpenses();
-    updateSummary();
 }
-
-function addExpense(e) {
-
-    e.preventDefault();
-
-    const amount = parseFloat(document.getElementById("amount").value);
-    const category = document.getElementById("category").value;
-    const description = document.getElementById("description").value;
-    const date = document.getElementById("date").value;
-
-    if (!amount || !category || !date) {
+// Now it correctly accepts the 3 parameters sent by your event listener
+async function addExpense(amount, type, date) {
+    if (!amount || !type) {
         alert("Please fill all required fields.");
         return;
     }
 
-    const expense = {
-        id: Date.now(),
-        amount,
-        category,
-        description,
-        date
-    };
+    const token = localStorage.getItem("token");
+    
+    try {
+        // Send the new expense to your Render server
+        const response = await fetch('/api/transactions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                text: type,
+                amount: parseFloat(amount),
+                type: 'expense',
+                date: date 
+            })
+        });
 
-    const users = JSON.parse(localStorage.getItem("users")) || {};
-
-    if (!users[currentUser.username].expenses) {
-        users[currentUser.username].expenses = [];
+        if (response.ok) {
+            // If the server saved it successfully, pull the fresh data and update the screen
+            await fetchExpenses(); 
+            document.getElementById("expenseForm").reset();
+        } else {
+            alert("Failed to save expense to server.");
+        }
+    } catch (error) {
+        console.error("Error saving expense:", error);
     }
-
-    users[currentUser.username].expenses.push(expense);
-
-    localStorage.setItem("users", JSON.stringify(users));
-
-    expenses = users[currentUser.username].expenses;
-
-    renderExpenses();
-    updateSummary();
-
-    document.getElementById("expenseForm").reset();
 }
 
-function deleteItem(id) {
+async function deleteItem(id) {
+    const token = localStorage.getItem("token");
+    
+    try {
+        const response = await fetch(`/api/transactions/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-    const users = JSON.parse(localStorage.getItem("users")) || {};
-
-    users[currentUser.username].expenses =
-        users[currentUser.username].expenses.filter(
-            expense => expense.id !== id
-        );
-
-    localStorage.setItem("users", JSON.stringify(users));
-
-    expenses = users[currentUser.username].expenses;
-
-    renderExpenses();
-    updateSummary();
+        if (response.ok) {
+            await fetchExpenses(); // Refresh the screen with the item removed
+        }
+    } catch (error) {
+        console.error("Error deleting item:", error);
+    }
 }
+
 function updateScreen() {
     const el = getElements();
     const selectedMonth = el.monthSelector.value;

@@ -74,7 +74,8 @@ app.post('/api/login', (req, res) => {
 
         // Create a token to keep the user logged in
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'fallback_secret_key', { expiresIn: '1h' });
-        res.json({ message: 'Logged in successfully', token });
+        // Add username to the response
+res.json({ message: 'Logged in successfully', token: token, username: user.username });
     });
 });
 
