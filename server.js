@@ -127,6 +127,20 @@ app.post('/api/transactions', verifyToken, (req, res) => {
     });
 });
 
+// GET route to fetch all expenses for the logged-in user
+app.get('/api/transactions', verifyToken, (req, res) => {
+    // req.userId is securely provided by the verifyToken middleware
+    const query = 'SELECT * FROM transactions WHERE user_id = ?';
+    
+    db.all(query, [req.userId], (err, rows) => {
+        if (err) {
+            console.error("Database error fetching transactions:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+        // Successfully send the array of data back to the frontend
+        res.status(200).json(rows); 
+    });
+});
 // Delete a transaction
 app.delete('/api/transactions/:id', verifyToken, (req, res) => {
     const transactionId = req.params.id;
